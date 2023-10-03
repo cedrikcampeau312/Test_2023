@@ -1,0 +1,126 @@
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import mean_squared_error, r2_score, mean_absolute_error
+from sklearn.preprocessing import StandardScaler
+from bayes_opt import BayesianOptimization
+from fuzzywuzzy import process
+
+def get_best_match(name, choices, score_cutoff=90):
+    best_match = process.extractOne(name, choices, score_cutoff=score_cutoff)
+    return best_match[0] if best_match else None
+players_list = ['Connor McDavid' ,  'Leon Draisaitl' ,  'David Pastrnak' ,  'Nikita Kucherov' ,  'Nathan MacKinnon' ,  'Jason Robertson' ,  'Matthew Tkachuk' ,  'Mikko Rantanen' ,  'Ryan Nugent-Hopkins' ,  'Elias Pettersson' ,  'Erik Karlsson' ,  'Jack Hughes' ,  'Mitchell Marner' ,  'Brayden Point' ,  'Tage Thompson' ,  'Sidney Crosby' ,  'Artemi Panarin' ,  'Mika Zibanejad' ,  'Tim Stützle' ,  'William Nylander' ,  'Clayton Keller' ,  'Auston Matthews' ,  'Steven Stamkos' ,  'Zach Hyman' ,  'Brady Tkachuk' ,  'Evgeni Malkin' ,  'Jeff Skinner' ,  'J,T, Miller' ,  'John Tavares' ,  'Nico Hischier' ,  'Kyle Connor' ,  'Alex Tuch' ,  'Claude Giroux' ,  'Dylan Larkin' ,  'Jamie Benn' ,  'Aleksander Barkov' ,  'Joe Pavelski' ,  'Josh Morrissey' ,  'Quinn Hughes' ,  'Alexander Ovechkin' ,  'Kirill Kaprizov' ,  'Roope Hintz' ,  'Brock Nelson' ,  'Andrei Kuzmenko' ,  'Anze Kopitar' ,  'Dougie Hamilton' ,  'Johnny Gaudreau' ,  'Carter Verhaeghe' ,  'Jordan Kyrou' ,  'Jake Guentzel' ,  'Tyler Toffoli' ,  'Jesper Bratt' ,  'Brandon Montour' ,  'Rasmus Dahlin' ,  'Miro Heiskanen' ,  'Kevin Fiala' ,  'Adam Fox' ,  'Martin Necas' ,  'Jared McCann' ,  'Bo Horvat' ,  'Mark Scheifele' ,  'Dylan Cozens' ,  'Adrian Kempe' ,  'Sebastian Aho' ,  'Sam Reinhart' ,  'Logan Couture' ,  'Pavel Buchnevich' ,  'Mats Zuccarello' ,  'Brad Marchand' ,  'Timo Meier' ,  'Jack Eichel' ,  'Alex DeBrincat' ,  'Nicholas Suzuki' ,  'Cale Makar' ,  'Dylan Strome' ,  'Trevor Zegras' ,  'Brayden Schenn' ,  'Robert Thomas' ,  'Chandler Stephenson' ,  'Brandon Hagel' ,  'Alex Killorn' ,  'Elias Lindholm' ,  'Vincent Trocheck' ,  'Vince Dunn' ,  'Mikhail Sergachyov' ,  'Matthew Boldy' ,  'Pierre-Luc Dubois' ,  'Tomas Hertl' ,  'Jordan Eberle' ,  'Drake Batherson' ,  'Travis Konecny' ,  'Troy Terry' ,  'Joel Eriksson Ek' ,  'Brent Burns' ,  'Rickard Rakell' ,  'Viktor Arvidsson' ,  'Roman Josi' ,  'Casey Mittelstadt' ,  'Patrice Bergeron' ,  'Nick Schmaltz' ,  'Jonathan Marchessault' ,  'Matthew Beniers' ,  'Patrick Kane' ,  'Pavel Zacha' ,  'Dawson Mercer' ,  'Reilly Smith' ,  'David Perron' ,  'Nazem Kadri' ,  'Matt Duchene' ,  'Max Domi' ,  'Mikael Backlund' ,  'David Krejcí' ,  'Andrei Svechnikov' ,  'Brock Boeser' ,  'Blake Wheeler' ,  'Jonathan Huberdeau' ,  'Tyson Barrie' ,  'Evgeny Kuznetsov' ,  'Chris Kreider' ,  'Kevin Hayes' ,  'Phillip Danault' ,  'Alex Pietrangelo' ,  'William Karlsson' ,  'Hampus Lindholm' ,  'Patrik Laine' ,  'J,T, Compher' ,  'Drew Doughty' ,  'Charlie McAvoy' ,  'Artturi Lehkonen' ,  'Mathew Barzal' ,  'Anders Lee' ,  'Jake DeBrusk' ,  'Tyler Seguin' ,  'Vladimir Tarasenko' ,  'Justin Faulk' ,  'Devon Toews' ,  'Owen Tippett' ,  'Michael Bunting' ,  'Noah Dobson' ,  'Matias Maccelli' ,  'Rasmus Andersson' ,  'Victor Hedman' ,  'Jason Zucker' ,  'Tomas Tatar' ,  'Yanni Gourde' ,  'Cam Fowler' ,  'Valeri Nichushkin' ,  'Alexander Barabanov' ,  'Daniel Sprong']
+teams_2023 = ['EDM' ,  'EDM' ,  'BOS' ,  'TBL' ,  'COL' ,  'DAL' ,  'FLA' ,  'COL' ,  'EDM' ,  'VAN' ,  'SJS' ,  'NJD' ,  'TOR' ,  'TBL' ,  'BUF' ,  'PIT' ,  'NYR' ,  'NYR' ,  'OTT' ,  'TOR' ,  'ARI' ,  'TOR' ,  'TBL' ,  'EDM' ,  'OTT' ,  'PIT' ,  'BUF' ,  'VAN' ,  'TOR' ,  'NJD' ,  'WPG' ,  'BUF' ,  'OTT' ,  'DET' ,  'DAL' ,  'FLA' ,  'DAL' ,  'WPG' ,  'VAN' ,  'WSH' ,  'MIN' ,  'DAL' ,  'NYI' ,  'VAN' ,  'LAK' ,  'NJD' ,  'CBJ' ,  'FLA' ,  'STL' ,  'PIT' ,  'CGY' ,  'NJD' ,  'FLA' ,  'BUF' ,  'DAL' ,  'LAK' ,  'NYR' ,  'CAR' ,  'SEA' ,  'NYI' ,  'WPG' ,  'BUF' ,  'LAK' ,  'CAR' ,  'FLA' ,  'SJS' ,  'STL' ,  'MIN' ,  'BOS' ,  'NJD' ,  'VGK' ,  'OTT' ,  'MTL' ,  'COL' ,  'WSH' ,  'ANA' ,  'STL' ,  'STL' ,  'VGK' ,  'TBL' ,  'TBL' ,  'CGY' ,  'NYR' ,  'SEA' ,  'TBL' ,  'MIN' ,  'WPG' ,  'SJS' ,  'SEA' ,  'OTT' ,  'PHI' ,  'ANA' ,  'MIN' ,  'CAR' ,  'PIT' ,  'LAK' ,  'NSH' ,  'BUF' ,  'BOS' ,  'ARI' ,  'VGK' ,  'SEA' ,  'NYR' ,  'BOS' ,  'NJD' ,  'VGK' ,  'DET' ,  'CGY' ,  'NSH' ,  'DAL' ,  'CGY' ,  'BOS' ,  'CAR' ,  'VAN' ,  'WPG' ,  'CGY' ,  'NSH' ,  'WSH' ,  'NYR' ,  'PHI' ,  'LAK' ,  'VGK' ,  'VGK' ,  'BOS' ,  'CBJ' ,  'COL' ,  'LAK' ,  'BOS' ,  'COL' ,  'NYI' ,  'NYI' ,  'BOS' ,  'DAL' ,  'NYR' ,  'STL' ,  'COL' ,  'PHI' ,  'TOR' ,  'NYI' ,  'ARI' ,  'CGY' ,  'TBL' ,  'PIT' ,  'NJD' ,  'SEA' ,  'ANA' ,  'COL' ,  'SJS' ,  'SEA']
+ages_2023 = [26,  28,  27,  30,  28,  24,  26,  27,  30,  25,  33,  22,  26,  27,  26,  36,  32,  30,  21,  27,  25,  26,  33,  31,  24,  37,  31,  30,  33,  24,  27,  27,  35,  27,  34,  28,  39,  28,  24,  38,  26,  27,  32,  27,  36,  30,  30,  28,  25,  29,  31,  25,  29,  23,  24,  27,  25,  24,  27,  28,  30,  22,  27,  26,  28,  34,  28,  36,  35,  27,  27,  26,  24,  25,  26,  22,  32,  24,  29,  25,  34,  29,  30,  27,  25,  22,  25,  30,  33,  25,  26,  26,  26,  38,  30,  30,  33,  25,  38,  27,  33,  21,  35,  26,  22,  32,  35,  33,  32,  28,  34,  37,  23,  26,  37,  30,  32,  31,  32,  31,  30,  33,  30,  29,  25,  28,  34,  26,  28,  26,  33,  27,  31,  32,  31,  29,  24,  28,  23,  23,  27,  33,  31,  33,  32,  32,  28,  29,  26]  
+
+assert len(players_list) == len(teams_2023) == len(ages_2023)
+
+data_players = pd.read_excel('STATS_PLAYER4.xlsx')
+team_data = pd.read_excel('CLASSEMENT202220232.xlsx')
+
+data_2023 = pd.DataFrame({
+    'Name_2023': players_list,
+    'Team_2023': teams_2023,
+    'Age_2023': ages_2023
+})
+names = data['Name_2023']
+data_players['fuzzy_name'] = data_players['Name_dataplayer'].apply(lambda x: get_best_match(x, players_list))
+data = pd.merge(data_2023, data_players, left_on='Name_2023', right_on='fuzzy_name', how='left')
+
+data['Team_2023'].fillna('Unknown', inplace=True)
+data = data[data['Name_2023'].notna()]
+
+age_data = pd.DataFrame({
+    'Age': list(range(17, 44)),
+    'Peak': [1.6, 1.65, 1.85, 1.95, 2.23, 2.39, 2.5, 2.49, 2.46, 2.34, 2.34, 2.31, 2.23, 2.12, 1.96, 1.88, 1.67, 1.63, 1.37, 1.36, 1.13, 0.96, 1.02, 0.51, 0.95, 0.3, 0.49]
+})
+data = pd.merge(data, age_data, left_on='Age_2023', right_on='Age', how='left')
+data = pd.merge(data, team_data, left_on='Team_2023', right_on='Team_ me2', how='left')
+
+features = ['G_dataplayer', 'A_dataplayer', 'PTS_dataplayer', 'PlusMinus_dataplayer','P/GP_dataplayer','A/GP_dataplayer','G/GP_dataplayer', 'Rk_dataplayer', 'P/60_dataplayer', 'Peak', 'SHOTS_dataplayer','PPG_dataplayer','ESP/60_dataplayer', 'GF_T']
+X = data[features].copy()
+y = data[['G_dataplayer', 'PTS_dataplayer', 'A_dataplayer','P/GP_dataplayer','A/GP_dataplayer','G/GP_dataplayer']].copy()
+X.fillna(0, inplace=True)
+y.fillna(0, inplace=True)
+
+
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=1, random_state=42)
+scaler = StandardScaler()
+test_mask = names.isin(['Connor McDavid' ,  'Leon Draisaitl' ,  'David Pastrnak' ,  'Nikita Kucherov' ,  'Nathan MacKinnon' ,  'Jason Robertson' ,  'Matthew Tkachuk' ,  'Mikko Rantanen' ,  'Ryan Nugent-Hopkins' ,  'Elias Pettersson' ,  'Erik Karlsson' ,  'Jack Hughes' ,  'Mitchell Marner' ,  'Brayden Point' ,  'Tage Thompson' ,  'Sidney Crosby' ,  'Artemi Panarin' ,  'Mika Zibanejad' ,  'Tim Stützle' ,  'William Nylander' ,  'Clayton Keller' ,  'Auston Matthews' ,  'Steven Stamkos' ,  'Zach Hyman' ,  'Brady Tkachuk' ,  'Evgeni Malkin' ,  'Jeff Skinner' ,  'J,T, Miller' ,  'John Tavares' ,  'Nico Hischier' ,  'Kyle Connor' ,  'Alex Tuch' ,  'Claude Giroux' ,  'Dylan Larkin' ,  'Jamie Benn' ,  'Aleksander Barkov' ,  'Joe Pavelski' ,  'Josh Morrissey' ,  'Quinn Hughes' ,  'Alexander Ovechkin' ,  'Kirill Kaprizov' ,  'Roope Hintz' ,  'Brock Nelson' ,  'Andrei Kuzmenko' ,  'Anze Kopitar' ,  'Dougie Hamilton' ,  'Johnny Gaudreau' ,  'Carter Verhaeghe' ,  'Jordan Kyrou' ,  'Jake Guentzel' ,  'Tyler Toffoli' ,  'Jesper Bratt' ,  'Brandon Montour' ,  'Rasmus Dahlin' ,  'Miro Heiskanen' ,  'Kevin Fiala' ,  'Adam Fox' ,  'Martin Necas' ,  'Jared McCann' ,  'Bo Horvat' ,  'Mark Scheifele' ,  'Dylan Cozens' ,  'Adrian Kempe' ,  'Sebastian Aho' ,  'Sam Reinhart' ,  'Logan Couture' ,  'Pavel Buchnevich' ,  'Mats Zuccarello' ,  'Brad Marchand' ,  'Timo Meier' ,  'Jack Eichel' ,  'Alex DeBrincat' ,  'Nicholas Suzuki' ,  'Cale Makar' ,  'Dylan Strome' ,  'Trevor Zegras' ,  'Brayden Schenn' ,  'Robert Thomas' ,  'Chandler Stephenson' ,  'Brandon Hagel' ,  'Alex Killorn' ,  'Elias Lindholm' ,  'Vincent Trocheck' ,  'Vince Dunn' ,  'Mikhail Sergachyov' ,  'Matthew Boldy' ,  'Pierre-Luc Dubois' ,  'Tomas Hertl' ,  'Jordan Eberle' ,  'Drake Batherson' ,  'Travis Konecny' ,  'Troy Terry' ,  'Joel Eriksson Ek' ,  'Brent Burns' ,  'Rickard Rakell' ,  'Viktor Arvidsson' ,  'Roman Josi' ,  'Casey Mittelstadt' ,  'Patrice Bergeron' ,  'Nick Schmaltz' ,  'Jonathan Marchessault' ,  'Matthew Beniers' ,  'Patrick Kane' ,  'Pavel Zacha' ,  'Dawson Mercer' ,  'Reilly Smith' ,  'David Perron' ,  'Nazem Kadri' ,  'Matt Duchene' ,  'Max Domi' ,  'Mikael Backlund' ,  'David Krejcí' ,  'Andrei Svechnikov' ,  'Brock Boeser' ,  'Blake Wheeler' ,  'Jonathan Huberdeau' ,  'Tyson Barrie' ,  'Evgeny Kuznetsov' ,  'Chris Kreider' ,  'Kevin Hayes' ,  'Phillip Danault' ,  'Alex Pietrangelo' ,  'William Karlsson' ,  'Hampus Lindholm' ,  'Patrik Laine' ,  'J,T, Compher' ,  'Drew Doughty' ,  'Charlie McAvoy' ,  'Artturi Lehkonen' ,  'Mathew Barzal' ,  'Anders Lee' ,  'Jake DeBrusk' ,  'Tyler Seguin' ,  'Vladimir Tarasenko' ,  'Justin Faulk' ,  'Devon Toews' ,  'Owen Tippett' ,  'Michael Bunting' ,  'Noah Dobson' ,  'Matias Maccelli' ,  'Rasmus Andersson' ,  'Victor Hedman' ,  'Jason Zucker' ,  'Tomas Tatar' ,  'Yanni Gourde' ,  'Cam Fowler' ,  'Valeri Nichushkin' ,  'Alexander Barabanov' ,  'Daniel Sprong'])
+X_train = X.loc[~test_mask]
+y_train = y.loc[~test_mask]
+X_test = X.loc[test_mask]
+y_test = y.loc[test_mask]
+X_scaled = scaler.fit_transform(X)
+X_train_scaled = scaler.transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+train_names = data.loc[X_train.index, 'Name_2023'].values
+test_names = data.loc[X_test.index, 'Name_2023'].values
+missing_names_in_test = [name for name in train_names if name not in test_names]
+print('Noms manquants dans X_test mais présents dans X_train:', missing_names_in_test)
+
+def rf_eval(n_estimators, max_depth, min_samples_split, min_samples_leaf):
+    rf = RandomForestRegressor(n_estimators=int(n_estimators),
+                               max_depth=int(max_depth),
+                               min_samples_split=int(min_samples_split),
+                               min_samples_leaf=int(min_samples_leaf),
+                               random_state=42)
+    rf.fit(X_train_scaled, y_train)
+    y_pred = rf.predict(X_test_scaled)
+    return -mean_squared_error(y_test, y_pred)
+
+optimizer = BayesianOptimization(f=rf_eval,
+                                 pbounds={'n_estimators': (17040, 17800),
+                                          'max_depth': (1000, 1200),
+                                          'min_samples_split': (20, 24),
+                                          'min_samples_leaf': (20, 25)},
+                                 random_state=42)
+optimizer.maximize(init_points=5, n_iter=10)
+best_params = optimizer.max['params']
+best_params['n_estimators'] = int(best_params['n_estimators'])
+best_params['max_depth'] = int(best_params['max_depth'])
+best_params['min_samples_split'] = int(best_params['min_samples_split'])
+best_params['min_samples_leaf'] = int(best_params['min_samples_leaf'])
+
+rf_best = RandomForestRegressor(**best_params, random_state=42)
+rf_best.fit(X_scaled, y)
+y_pred = rf_best.predict(X_test_scaled)
+
+if len(y_test) == len(y_pred):
+    mse = mean_squared_error(y_test, y_pred)
+    rmse = np.sqrt(mse)
+    mae = mean_absolute_error(y_test, y_pred)
+    r2 = r2_score(y_test, y_pred)
+
+print(f"Mean Squared Error (MSE): {mse}")
+print(f"Root Mean Squared Error (RMSE): {rmse}")
+print(f"Mean Absolute Error (MAE): {mae}")
+print(f"R2 Score: {r2}")
+
+importances = rf_best.feature_importances_
+sorted_indices = np.argsort(importances)[::-1]
+for i in range(X.shape[1]):
+    print(f"{features[sorted_indices[i]]}: {importances[sorted_indices[i]]}")
+plt.figure(figsize=(12, 6))
+plt.scatter(y_test, y_pred, alpha=0.5)
+plt.xlabel('True Values')
+plt.ylabel('Predictions')
+plt.title('2022 vs predictions')
+plt.show()
+predictions_df = pd.DataFrame(y_pred, columns=['G_pred', 'PTS_pred', 'A_pred', 'P/GP_pred','A/GP_pred','G/GP_pred'])
+predictions_df['Name_2023'] = data.loc[X_test.index, 'Name_2023'].values
+for player in players_list:
+    if player not in predictions_df['Name_2023'].values:
+        new_row = {'Name_2023': player, 'G_pred': np.nan, 'PTS_pred': np.nan, 'A_pred': np.nan, 'P/GP_pred': np.nan, 'A/GP_pred': np.nan, 'G/GP_pred': np.nan}
+        new_row_df = pd.DataFrame([new_row])
+        predictions_df = pd.concat([predictions_df, new_row_df], ignore_index=True)
+plt.scatter('PTS_pred', 'P/GP_pred')
+plt.xlabel('Point prédit')
+plt.ylabel('Pts par match prédit')
+plt.hist('PTS_pred', bins=25)
+plt.show()
+plt.clf()
+print(predictions_df)
+predictions_df.to_excel('Predictions_2022_vs_Real_2022v14.xlsx', index=False)
